@@ -1,32 +1,4 @@
-# Ultimate Cipher Application
 
-A comprehensive encryption/decryption tool that combines multiple cipher algorithms for enhanced security:
-- Affine Cipher
-- Vigenere Cipher
-- Transposition Cipher
-- XOR-based Stream Cipher
-
-## Features
-
-- **Dual Interface**:
-  - Interactive Terminal Menu
-  - Modern Web Interface
-- **Input Validation**:
-  - Real-time validation for all inputs
-  - Clear error messages
-  - Helpful guidance for valid values
-- **Multiple Cipher Layers**:
-  - Affine Cipher with coprime key validation
-  - Vigenere Cipher with alphabetic key
-  - Transposition Cipher using Vigenere key length
-  - XOR-based Stream Cipher for additional security
-
-## Prerequisites
-
-- Python 3.7 or higher
-- pip (Python package installer)
-- Terminal/Command Prompt
-- Web browser (for web interface)
 
 ## Installation
 
@@ -106,36 +78,6 @@ http://localhost:5000
    - Provide required keys
    - View results with original and processed text
 
-## Valid Key Values
-
-### Affine Cipher
-- Key 'a': Must be coprime with 26
-  - Valid values: 1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25
-- Key 'b': Any number between 0 and 25
-
-### Vigenere Cipher
-- Key must contain only alphabetic characters (A-Z, a-z)
-- Case insensitive
-- No spaces or special characters allowed
-
-### XOR Cipher
-- Any text can be used as key
-- Longer keys provide better encryption
-
-## Example Usage
-
-### Terminal Interface Example:
-```bash
-# Start the terminal interface
-python menu_cli.py
-
-# Example inputs:
-Text: Hello World
-Affine key 'a': 5
-Affine key 'b': 8
-Vigenere key: SECRET
-XOR key: MyXORKey
-```
 
 ### Web Interface Example:
 1. Start the web server:
