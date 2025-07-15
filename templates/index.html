@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLAKE2 Hash Generator & Verifier</title>
+    <meta name="description" content="BLAKE2 hash generator and data integrity verification tool.">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="bg-pattern"></div>
+    
+    <div class="container">
+        <div class="main-card fade-in">
+            <div class="card-header">
+                <h1><i class="fas fa-fingerprint icon"></i>BLAKE2 Hash Tool</h1>
+                <p><i class="fas fa-shield-alt"></i> Generate & Verify Data Integrity</p>
+                <small>Fast • Secure • Reliable</small>
+            </div>
+            
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} fade-in">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" id="blake2Form" class="needs-validation" novalidate>
+                    {{ form.csrf_token }}
+                    
+                    <!-- Operation Type -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-cogs icon"></i>
+                            Operation Type
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.action.label(class="form-label") }}
+                            {{ form.action(class="form-select" + (" is-invalid" if form.action.errors else ""), id="operationType") }}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i>
+                                Choose whether to generate a new hash or verify existing data
+                            </div>
+                            {% if form.action.errors %}
+                                {% for error in form.action.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Text Input Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-edit icon"></i>
+                            Data Input
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.text.label(class="form-label") }}
+                            {{ form.text(class="form-control" + (" is-invalid" if form.text.errors else ""), 
+                                placeholder="Enter your text here...", rows="4") }}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i>
+                                Enter the text you want to hash or verify
+                            </div>
+                            {% if form.text.errors %}
+                                {% for error in form.text.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3" id="expected-hash-group" style="display: none;">
+                            {{ form.expected_hash.label(class="form-label") }}
+                            {{ form.expected_hash(class="form-control" + (" is-invalid" if form.expected_hash.errors else "")) }}
+                            <div class="form-text">
+                                <i class="fas fa-fingerprint"></i>
+                                Paste the hash you want to verify against
+                            </div>
+                            {% if form.expected_hash.errors %}
+                                {% for error in form.expected_hash.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- BLAKE2 Configuration Section -->
+                    <div class="form-section">
+                        <div class="section-title">
+                            <i class="fas fa-sliders-h icon"></i>
+                            Hash Configuration
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.hash_type.label(class="form-label") }}
+                                    {{ form.hash_type(class="form-select" + (" is-invalid" if form.hash_type.errors else "")) }}
+                                    <div class="form-text">
+                                        <i class="fas fa-cog"></i>
+                                        Choose BLAKE2 variant
+                                    </div>
+                                    {% if form.hash_type.errors %}
+                                        {% for error in form.hash_type.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.blake2_digest_size.label(class="form-label") }}
+                                    {{ form.blake2_digest_size(class="form-select" + (" is-invalid" if form.blake2_digest_size.errors else "")) }}
+                                    <div class="form-text">
+                                        <i class="fas fa-resize-arrows-alt"></i>
+                                        Output hash length
+                                    </div>
+                                    {% if form.blake2_digest_size.errors %}
+                                        {% for error in form.blake2_digest_size.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.blake2_key.label(class="form-label") }}
+                                    {{ form.blake2_key(class="form-control" + (" is-invalid" if form.blake2_key.errors else ""), 
+                                        placeholder="Optional secret key...") }}
+                                    <div class="form-text">
+                                        <i class="fas fa-key"></i>
+                                        For MAC authentication (max 64 bytes)
+                                    </div>
+                                    {% if form.blake2_key.errors %}
+                                        {% for error in form.blake2_key.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    {{ form.blake2_salt.label(class="form-label") }}
+                                    {{ form.blake2_salt(class="form-control" + (" is-invalid" if form.blake2_salt.errors else ""), 
+                                        placeholder="Optional salt...") }}
+                                    <div class="form-text">
+                                        <i class="fas fa-snowflake"></i>
+                                        For uniqueness (max 16 bytes)
+                                    </div>
+                                    {% if form.blake2_salt.errors %}
+                                        {% for error in form.blake2_salt.errors %}
+                                            <div class="invalid-feedback">{{ error }}</div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        {{ form.submit(class="btn btn-primary btn-lg", id="submitBtn") }}
+                        <span class="loading-spinner" id="loadingSpinner"></span>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-keyboard"></i>
+                                Tip: Press Ctrl+Enter to quickly submit
+                            </small>
+                        </div>
+                    </div>
+                </form>
+
+                {% if result %}
+                    <div class="result-section fade-in">
+                        <div class="result-title">
+                            <i class="fas fa-check-circle icon"></i>
+                            Hash Generated Successfully
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="result-box">
+                                    <div class="result-label">
+                                        <i class="fas fa-file-text"></i>
+                                        Original Text
+                                    </div>
+                                    <div class="result-text" id="originalText">{{ original_text }}</div>
+                                    <button class="copy-btn" onclick="copyToClipboard('originalText')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="result-box">
+                                    <div class="result-label">
+                                        <i class="fas fa-fingerprint"></i>
+                                        {{ hash_info.algorithm if hash_info else 'BLAKE2' }} Hash
+                                    </div>
+                                    <div class="result-text" id="resultText">{{ result }}</div>
+                                    <button class="copy-btn" onclick="copyToClipboard('resultText')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Hash Information -->
+                        {% if hash_info %}
+                        <div class="mt-3 p-3 rounded" style="background: rgba(42, 42, 42, 0.7); border: 1px solid var(--glass-border);">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small style="color: var(--text-secondary); font-family: 'Courier Prime', monospace;">
+                                        <i class="fas fa-info-circle"></i>
+                                        <strong>Algorithm:</strong> {{ hash_info.algorithm }}<br>
+                                        <strong>Digest Size:</strong> {{ hash_info.digest_size }} bytes ({{ hash_info.bit_length }} bits)
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small style="color: var(--text-secondary); font-family: 'Courier Prime', monospace;">
+                                        <strong>Hash Length:</strong> {{ hash_info.hash_length }} characters<br>
+                                        <strong>Security Level:</strong> 
+                                        {% if hash_info.digest_size >= 32 %}
+                                            <span style="color: var(--accent-color);">High</span>
+                                        {% elif hash_info.digest_size >= 20 %}
+                                            <span style="color: var(--primary-color);">Medium</span>
+                                        {% else %}
+                                            <span style="color: var(--warning-color);">Low</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if verification_result %}
+                    <div class="result-section fade-in">
+                        <div class="result-title">
+                            <i class="fas fa-{{ 'check-double' if verification_result.is_valid else 'times-circle' }} icon"></i>
+                            Verification {{ 'Successful' if verification_result.is_valid else 'Failed' }}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="result-box">
+                                    <div class="result-label">
+                                        <i class="fas fa-fingerprint"></i>
+                                        Generated Hash
+                                    </div>
+                                    <div class="result-text" id="generatedHash">{{ verification_result.generated_hash }}</div>
+                                    <button class="copy-btn" onclick="copyToClipboard('generatedHash')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="result-box">
+                                    <div class="result-label">
+                                        <i class="fas fa-target"></i>
+                                        Expected Hash
+                                    </div>
+                                    <div class="result-text" id="expectedHash">{{ verification_result.expected_hash }}</div>
+                                    <button class="copy-btn" onclick="copyToClipboard('expectedHash')">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 p-3 rounded" style="background: rgba({{ '0, 204, 102' if verification_result.is_valid else '255, 68, 68' }}, 0.2); border: 1px solid {{ 'var(--success-color)' if verification_result.is_valid else 'var(--danger-color)' }};">
+                            <div class="text-center">
+                                <h5 style="color: {{ 'var(--success-color)' if verification_result.is_valid else 'var(--danger-color)' }};">
+                                    <i class="fas fa-{{ 'shield-check' if verification_result.is_valid else 'shield-exclamation' }}"></i>
+                                    {% if verification_result.is_valid %}
+                                        Data Integrity Verified - Hashes Match!
+                                    {% else %}
+                                        Data Integrity Failed - Hashes Don't Match!
+                                    {% endif %}
+                                </h5>
+                                <small style="color: var(--text-secondary);">
+                                    Algorithm: {{ verification_result.algorithm }} | 
+                                    Digest Size: {{ verification_result.digest_size }} bytes
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Show/hide expected hash field based on operation type
+        document.getElementById('operationType').addEventListener('change', function() {
+            const expectedHashGroup = document.getElementById('expected-hash-group');
+            if (this.value === 'verify') {
+                expectedHashGroup.style.display = 'block';
+            } else {
+                expectedHashGroup.style.display = 'none';
+            }
+        });
+
+        // Copy to clipboard function
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent || element.innerText;
+            navigator.clipboard.writeText(text).then(function() {
+                // Show success feedback
+                const button = element.parentNode.querySelector('.copy-btn');
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                button.style.background = 'var(--success-color)';
+                
+                setTimeout(function() {
+                    button.innerHTML = originalText;
+                    button.style.background = '';
+                }, 2000);
+            });
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('submitBtn').click();
+            }
+        });
+    </script>
+</body>
+</html>
