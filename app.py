@@ -1,10 +1,10 @@
 from flask import Flask, render_template, request, flash
-import hashlib
 import hmac
 import binascii
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Optional, Length, ValidationError
+from blake2_implementation import BLAKE2b, BLAKE2s, blake2b, blake2s
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this in production
@@ -80,24 +80,24 @@ class Blake2Form(FlaskForm):
     submit = SubmitField('Process')
 
 def generate_blake2_hash(text, hash_type, digest_size, key=None, salt=None):
-    """Generate BLAKE2 hash with specified parameters"""
+    """Generate BLAKE2 hash with specified parameters using our custom implementation"""
     try:
         # Convert inputs to bytes
         text_bytes = text.encode('utf-8')
         digest_size = int(digest_size)
         
+        # Prepare key and salt as bytes
+        key_bytes = key.encode('utf-8') if key else b""
+        salt_bytes = salt.encode('utf-8') if salt else b""
+        
         if hash_type in ['blake2b', 'blake2b_keyed']:
             if hash_type == 'blake2b_keyed' and not key:
                 raise ValueError("Key is required for keyed BLAKE2b")
             
-            if key and salt:
-                hasher = hashlib.blake2b(digest_size=digest_size, key=key.encode('utf-8'), salt=salt.encode('utf-8'))
-            elif key:
-                hasher = hashlib.blake2b(digest_size=digest_size, key=key.encode('utf-8'))
-            elif salt:
-                hasher = hashlib.blake2b(digest_size=digest_size, salt=salt.encode('utf-8'))
-            else:
-                hasher = hashlib.blake2b(digest_size=digest_size)
+            # Use our custom BLAKE2b implementation
+            hasher = BLAKE2b(digest_size=digest_size, key=key_bytes, salt=salt_bytes)
+            hasher.update(text_bytes)
+            hash_result = hasher.hexdigest()
                 
         elif hash_type in ['blake2s', 'blake2s_keyed']:
             if hash_type == 'blake2s_keyed' and not key:
@@ -107,19 +107,12 @@ def generate_blake2_hash(text, hash_type, digest_size, key=None, salt=None):
             if digest_size > 32:
                 digest_size = 32
                 
-            if key and salt:
-                hasher = hashlib.blake2s(digest_size=digest_size, key=key.encode('utf-8'), salt=salt.encode('utf-8'))
-            elif key:
-                hasher = hashlib.blake2s(digest_size=digest_size, key=key.encode('utf-8'))
-            elif salt:
-                hasher = hashlib.blake2s(digest_size=digest_size, salt=salt.encode('utf-8'))
-            else:
-                hasher = hashlib.blake2s(digest_size=digest_size)
+            # Use our custom BLAKE2s implementation
+            hasher = BLAKE2s(digest_size=digest_size, key=key_bytes, salt=salt_bytes)
+            hasher.update(text_bytes)
+            hash_result = hasher.hexdigest()
         else:
             raise ValueError("Invalid hash type")
-        
-        hasher.update(text_bytes)
-        hash_result = hasher.hexdigest()
         
         return {
             'hash': hash_result,
